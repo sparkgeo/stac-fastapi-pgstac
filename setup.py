@@ -15,6 +15,7 @@ install_requires = [
     "stac-fastapi.extensions~=2.4.9",
     "asyncpg",
     "buildpg",
+    "starlette_cramjam",
     "brotli_asgi",
     "pygeofilter>=0.2",
     "pypgstac==0.7.*",

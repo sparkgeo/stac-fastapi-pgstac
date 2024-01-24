@@ -8,6 +8,7 @@ If the variable is not set, enables all extensions.
 import os
 
 from fastapi.responses import ORJSONResponse
+from fastapi import APIRouter
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.models import create_get_request_model, create_post_request_model
 from stac_fastapi.extensions.core import (
@@ -27,6 +28,27 @@ from stac_fastapi.pgstac.extensions import QueryExtension
 from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient, TransactionsClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
+from starlette.middleware.cors import CORSMiddleware
+from starlette_cramjam.middleware import CompressionMiddleware
+from stac_fastapi.pgstac.static_response import static_enexus
+
+class StacApiEnexus(StacApi):
+
+    def add_test(self):
+        """Test Endpoint"""
+        mgmt_router = APIRouter(prefix=self.app.state.router_prefix)
+
+        @mgmt_router.get("/enexus")
+        async def enexus():
+            """static response for nesting"""
+            return static_enexus
+
+        self.app.include_router(mgmt_router, tags=["Static Responses for STAC Browser"])
+    
+    def __attrs_post_init__(self):
+        super().__attrs_post_init__()
+        self.add_test()
+
 
 settings = Settings()
 extensions_map = {
@@ -54,16 +76,24 @@ else:
 
 post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)
 
-api = StacApi(
+api = StacApiEnexus(
     settings=settings,
     extensions=extensions,
     client=CoreCrudClient(post_request_model=post_request_model),
     response_class=ORJSONResponse,
     search_get_request_model=create_get_request_model(extensions),
     search_post_request_model=post_request_model,
+    middlewares=[CompressionMiddleware],
 )
 app = api.app
 
+app.add_middleware(
+        CORSMiddleware,
+        allow_origins="*",
+        allow_credentials=True,
+        allow_methods="GET,POST,OPTIONS",
+        allow_headers="*",
+    )
 
 @app.on_event("startup")
 async def startup_event():

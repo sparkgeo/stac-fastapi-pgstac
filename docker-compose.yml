@@ -1,4 +1,5 @@
 version: '3'
+
 services:
   app:
     container_name: stac-fastapi-pgstac
@@ -29,6 +30,8 @@ services:
       - .:/app
     depends_on:
       - database
+    networks:
+      - default
     command: bash -c "./scripts/wait-for-it.sh database:5432 && python -m stac_fastapi.pgstac.app"
 
   database:
@@ -43,6 +46,8 @@ services:
       - PGDATABASE=postgis
     ports:
       - "5439:5432"
+    networks:
+      - default
     command: postgres -N 500
 
   # Load joplin demo dataset into the PGStac Application
@@ -65,6 +70,22 @@ services:
     depends_on:
       - database
       - app
+    networks:
+      - default
+
+  # Available at localhost:8080/stacbrowser/
+  stac-browser:
+    image: cuttlefish/stac-browser:latest
+    ports:
+      - 8080:8080
+    environment:
+      SB_catalogUrl: "https://localhost:8082"
+    networks:
+      - default
+    depends_on:
+      - app
+      - database
+      - loadjoplin
 
 networks:
   default:
