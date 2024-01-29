@@ -8,8 +8,7 @@ If the variable is not set, enables all extensions.
 import os
 
 from fastapi.responses import ORJSONResponse
-from fastapi import APIRouter
-from stac_fastapi.api.app import StacApi
+from stac_fastapi.pgstac.stacapi_enexus import StacApiEnexus
 from stac_fastapi.api.models import create_get_request_model, create_post_request_model
 from stac_fastapi.extensions.core import (
     ContextExtension,
@@ -31,7 +30,6 @@ from stac_fastapi.pgstac.types.search import PgstacSearch
 # from starlette.middleware.cors import CORSMiddleware
 # from starlette_cramjam.middleware import CompressionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
-from stac_fastapi.pgstac.static_response import static_enexus
 
 
 settings = Settings()
@@ -60,27 +58,26 @@ else:
 
 post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)
 
-api = StacApi(
+# CORS docs implemented here: https://github.com/stac-utils/stac-fastapi/blob/main/docs/tips-and-tricks.md  
+
+api = StacApiEnexus(
     settings=settings,
     extensions=extensions,
     client=CoreCrudClient(post_request_model=post_request_model),
     response_class=ORJSONResponse,
     search_get_request_model=create_get_request_model(extensions),
     search_post_request_model=post_request_model,
+    middlewares=[lambda app: CORSMiddleware(app, allow_origins=["*"])],
 )
 app = api.app
 
-app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-@app.get("/enexus")
-async def get_static_response_enexus():
-    return static_enexus
+# app.add_middleware(
+#         CORSMiddleware,
+#         allow_origins=["*"],
+#         allow_credentials=True,
+#         allow_methods=["*"],
+#         allow_headers=["*"],
+#     )
 
 @app.on_event("startup")
 async def startup_event():
